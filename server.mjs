@@ -501,3 +501,9 @@ app.use(cors({
   allowedHeaders: ["Content-Type", "Authorization"],
   optionsSuccessStatus: 204,
 }));
+
+const server = app.listen(PORT, () => {
+  console.log(`Qeasy server running on http://localhost:${PORT}`);
+});
+process.on('SIGTERM', () => server.close(() => process.exit(0)));
+process.on('SIGINT',  () => server.close(() => process.exit(0)));
