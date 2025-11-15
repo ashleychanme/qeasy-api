@@ -68,26 +68,37 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: "1mb" }));
 
 // ====== CORS（ここだけ / 重複禁止）======
-const allowList = (ALLOW_ORIGIN || "")
-  .split(",")
-  .map((s) => s.trim())
-  .filter(Boolean);
-
+const allowList = (ALLOW_ORIGIN || "").split(",").map(s => s.trim()).filter(Boolean);
+const isAllowed = (origin) => {
+  if (!origin) return true;              // curl 等
+  if (allowList.includes("*")) return true;
+  if (allowList.includes(origin)) return true;
+  try {
+    const u = new URL(origin);
+    return allowList.some(p => {
+      if (p.startsWith("https://*.")) {
+        const base = p.slice("https://*.".length);
+        return u.protocol === "https:" && (u.hostname === base || u.hostname.endsWith(`.${base}`));
+      }
+      if (p.startsWith("http://*.")) {
+        const base = p.slice("http://*.".length);
+        return u.protocol === "http:" && (u.hostname === base || u.hostname.endsWith(`.${base}`));
+      }
+      return false;
+    });
+  } catch { return false; }
+};
 const corsOptionsDelegate = (req, cb) => {
   const origin = req.headers.origin;
-  const allowed =
-    allowList.includes("*") || (origin && allowList.includes(origin));
   cb(null, {
-    origin: allowed ? origin : false, // ← 1値だけ返す（複数値禁止）
+    origin: isAllowed(origin) ? origin : false,
     credentials: true,
-    methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    // allowedHeaders は未指定（ブラウザの Access-Control-Request-Headers を反映させる）
+    methods: ["GET","HEAD","POST","PUT","PATCH","DELETE","OPTIONS"],
     maxAge: 86400,
     preflightContinue: false,
     optionsSuccessStatus: 204,
   });
 };
-
 app.use(cors(corsOptionsDelegate));
 app.options("*", cors(corsOptionsDelegate));
 
