@@ -50,6 +50,30 @@ const QOO10_API_KEY = process.env.QOO10_API_KEY || "";
 const QOO10_USER_ID = process.env.QOO10_USER_ID || "";
 const QOO10_USER_PW = process.env.QOO10_USER_PW || "";
 
+const allowList = (process.env.ALLOW_ORIGIN || '')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean);
+
+// Origin ごとに1つだけ返す（重複禁止）
+const corsOptionsDelegate = (req, cb) => {
+  const origin = req.headers.origin;
+  const allowed = origin && allowList.includes(origin);
+  cb(null, {
+    origin: allowed ? origin : false,     // ← ここで1個だけ返す
+    credentials: true,
+    methods: ['GET','HEAD','POST','PUT','PATCH','DELETE','OPTIONS'],
+    // allowedHeaders は未指定にして cors に「要求ヘッダを反映」させる
+    maxAge: 86400,                        // preflight を 1日キャッシュ
+    preflightContinue: false,             // cors が OPTIONS を直接返す
+    optionsSuccessStatus: 204,
+  });
+};
+
+// ★ ルーティングより前に置く
+app.use(cors(corsOptionsDelegate));
+// ★ すべてのパスの preflight を処理
+app.options('*', cors(corsOptionsDelegate));
 // Seller認証キー(SAK)キャッシュ
 let qoo10AuthCache = {
   key: "",
