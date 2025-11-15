@@ -62,6 +62,30 @@ const __dirname = path.dirname(__filename);
 const DATA_DIR = path.join(__dirname, "data");
 const SETTINGS_FILE = path.join(DATA_DIR, "settings.json");
 const ITEMS_FILE = path.join(DATA_DIR, "items.json");
+const allowList = (process.env.ALLOW_ORIGIN || '')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean);
+
+// Origin ごとに動的許可（1つだけ返す）
+const corsOptionsDelegate = (req, cb) => {
+  const origin = req.headers.origin;
+  if (origin && allowList.includes(origin)) {
+    cb(null, {
+      origin,                // ここで1個だけ返す
+      credentials: true,
+      methods: ['GET','HEAD','POST','PUT','PATCH','DELETE','OPTIONS'],
+      allowedHeaders: ['Content-Type','Authorization','X-Requested-With'],
+      maxAge: 86400,         // preflight のキャッシュ（秒）
+    });
+  } else {
+    cb(null, { origin: false });
+  }
+};
+
+app.use(cors(corsOptionsDelegate));
+// 明示的に preflight も処理
+app.options('*', cors(corsOptionsDelegate));
 
 async function ensureDataDir() {
   try {
